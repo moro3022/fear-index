@@ -192,7 +192,7 @@ st.markdown(
     ".card{background:#eee;border:1px solid #e5e7eb;border-radius:16px;padding:10px 20px}"
     ".card-title{font-weight:600;font-size:20px;color:#444}"
     ".card-value{font-weight:700;font-size:32px}"
-    ".desktop-inline{display:block}"
+    ".desktop-inline{display:inline}"
     ".mobile-block{display:none}"
     "@media (max-width: 767px) {"
     ".desktop-inline{display:none}"
@@ -276,12 +276,10 @@ with tab1:
                     m5_dis = f"{((qqq_now/ma5))*100:.1f}" if (qqq_now is not None and ma5 not in [None,0]) else "—"
                     m20_dis = f"{((qqq_now/ma20))*100:.1f}" if (qqq_now is not None and ma20 not in [None,0]) else "—"
                     qqq_ma_info = f"""
-                    <div style='font-size:16px; font-weight:600; color:#666; margin-top:8px;'>
-                        <div class='desktop-inline'>5MA : {m5} ({m5_dis}) / 20MA : {m20} ({m20_dis})</div>
-                        <div class='mobile-block'>
-                            <div>5MA : {m5} ({m5_dis})</div>
-                            <div>20MA : {m20} ({m20_dis})</div>
-                        </div>
+                    <span class='desktop-inline' style='font-size:16px; font-weight:600; color:#666; margin-left:6px;'>5MA : {m5} ({m5_dis}) / 20MA : {m20} ({m20_dis})</span>
+                    <div class='mobile-block' style='font-size:16px; font-weight:600; color:#666; margin-top:8px;'>
+                        <div>5MA : {m5} ({m5_dis})</div>
+                        <div>20MA : {m20} ({m20_dis})</div>
                     </div>"""
 
                 html = (
