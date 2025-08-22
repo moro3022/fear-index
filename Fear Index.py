@@ -1,5 +1,3 @@
-# app_tables.py
-# pip install streamlit requests yfinance pandas
 import re, datetime, zoneinfo, requests, pandas as pd, yfinance as yf, streamlit as st
 
 KST=zoneinfo.ZoneInfo("Asia/Seoul")
@@ -209,119 +207,113 @@ ma5, ma20 = fetch_ma_daily("QQQ")
 tab1, tab2 = st.tabs(["Fear", "Target"])
 
 with tab1:
-    def render_top_cards(fgi_now, fgi_label_now, qqq_now, qqq_chg, vix_now, vix_chg, qqq_ma5=None, qqq_ma20=None):
-        def badge_html(text):
-            color_map = {
-                "Extreme Greed": ("#4CB43C", "#fff"),
-                "Greed": ("#AEB335", "#fff"),
-                "Neutral": ("#FDB737", "#fff"),
-                "Fear": ("#FF9E9E", "#fff"),
-                "Extreme Fear": ("#FF8A65", "#fff")
-            }
-            bg, fg = color_map.get(text, ("#EEE", "#444"))
-            return f"<span style='background:{bg};color:{fg};padding:2px 10px;border-radius:8px;font-size:20px;margin-left:6px'>{text}</span>"
+    def badge_html(text):
+        color_map = {
+            "Extreme Greed": ("#4CB43C", "#fff"),
+            "Greed": ("#AEB335", "#fff"),
+            "Neutral": ("#FDB737", "#fff"),
+            "Fear": ("#FF9E9E", "#fff"),
+            "Extreme Fear": ("#FF8A65", "#fff")
+        }
+        bg, fg = color_map.get(text, ("#EEE", "#444"))
+        return f"<span style='background:{bg};color:{fg};padding:2px 10px;border-radius:8px;font-size:20px;margin-left:6px'>{text}</span>"
 
-        def sub_txt(text):
-            return f"<span style='font-size:16px; font-weight:600; color:#666;margin-left:6px'>{text}</span>"
+    def sub_txt(text):
+        return f"<span style='font-size:16px; font-weight:600; color:#666;margin-left:6px'>{text}</span>"
 
-        html = "<div class='grid'>"
-        # FGI
-        html += f"<div class='card'><div class='card-title'>F&G Index</div><div class='card-value'>{(fgi_now if fgi_now is not None else '—')} {badge_html(fgi_label_now)}</div></div>"
+    # FGI 카드 + 테이블
+    html = "<div class='grid'>"
+    html += f"<div class='card'><div class='card-title'>F&G Index</div><div class='card-value'>{(fgi_now if fgi_now is not None else '—')} {badge_html(fgi_label_now)}</div></div>"
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-        # QQQ
-        qqq_val = f"{qqq_now:.2f}" if qqq_now is not None else "—"
-        qqq_delta = f"({qqq_chg:+.2f}%)" if qqq_chg is not None else ""
-        qqq_ma_txt = ""
-        if qqq_ma5 is not None or qqq_ma20 is not None:
-            m5 = f"{qqq_ma5:.2f}" if qqq_ma5 is not None else "—"
-            m20 = f"{qqq_ma20:.2f}" if qqq_ma20 is not None else "—"
-            m5_dis = f"{((qqq_now/qqq_ma5))*100:.1f}" if (qqq_now is not None and qqq_ma5 not in [None,0]) else "—"
-            m20_dis = f"{((qqq_now/qqq_ma20))*100:.1f}" if (qqq_now is not None and qqq_ma20 not in [None,0]) else "—"
-            qqq_ma_txt = sub_txt(f"5MA : {m5} ({m5_dis}) / 20MA : {m20} ({m20_dis})")
-        if qqq_ma5 is not None or qqq_ma20 is not None:
-            m5_dis = f""
-        html += f"<div class='card'><div class='card-title'>QQQ</div><div class='card-value'>{qqq_val}<span style='margin-left:4px'>{qqq_ma_txt}</div></div>"
+    fgi_last20 = fgi_df.tail(20).iloc[::-1].copy()
+    rows = []
+    for d, v in zip(fgi_last20["날짜"], fgi_last20["FGI"]):
+        label = fgi_label(int(v))
+        bg, fg = {
+            "Extreme Greed": ("#4CB43C", "#fff"),
+            "Greed":         ("#AEB335", "#fff"),
+            "Neutral":       ("#FDB737", "#fff"),
+            "Fear":          ("#FF9E9E", "#fff"),
+            "Extreme Fear":  ("#FF8A65", "#fff"),
+        }.get(label, ("#EEE", "#000"))
+        badge = f"<span style='background:{bg};color:{fg};padding:2px 8px;border-radius:999px;font-size:14px;font-weight:600'>{label}</span>"
+        rows.append([
+            f"<td style='padding:6px 8px;text-align:center'>{d}</td>",
+            f"<td style='padding:6px 8px;text-align:center'>{int(v)}</td>",
+            f"<td style='padding:6px 8px;text-align:center'>{badge}</td>"
+        ])
+    render_table("FGI · 최근 20영업일", ["날짜", "FGI", "지표"], rows)
 
-        # VIX
-        vix_val = f"{vix_now:.2f}" if vix_now is not None else "—"
-        vix_delta = f"({vix_chg:+.2f}%)" if vix_chg is not None else ""
-        html += f"<div class='card'><div class='card-title'>VIX</div><div class='card-value'>{vix_val}</div></div>"
+    # QQQ 카드 + 테이블  
+    qqq_val = f"{qqq_now:.2f}" if qqq_now is not None else "—"
+    qqq_ma_txt = ""
+    if ma5 is not None or ma20 is not None:
+        m5 = f"{ma5:.2f}" if ma5 is not None else "—"
+        m20 = f"{ma20:.2f}" if ma20 is not None else "—"
+        m5_dis = f"{((qqq_now/ma5))*100:.1f}" if (qqq_now is not None and ma5 not in [None,0]) else "—"
+        m20_dis = f"{((qqq_now/ma20))*100:.1f}" if (qqq_now is not None and ma20 not in [None,0]) else "—"
+        qqq_ma_txt = sub_txt(f"5MA : {m5} ({m5_dis}) / 20MA : {m20} ({m20_dis})")
 
-        html += "</div>"
-        st.markdown(html, unsafe_allow_html=True)
+    html = "<div class='grid'>"
+    html += f"<div class='card'><div class='card-title'>QQQ</div><div class='card-value'>{qqq_val}{qqq_ma_txt}</div></div>"
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    render_top_cards(fgi_now, fgi_label_now, qqq_now, qqq_chg, vix_now, vix_chg, qqq_ma5=ma5, qqq_ma20=ma20)
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    qqq = fetch_last10_daily("QQQ").iloc[::-1]
 
-    b1, b2, b3 = st.columns(3)
+    mdd_latest_zero_date = None
+    if not qqq.empty:
+        mdd_zero_rows = qqq[qqq["MDD_%"].abs() < 1e-12]
+        if not mdd_zero_rows.empty:
+            mdd_latest_zero_date = mdd_zero_rows["Date"].max()
 
-    with b1:
-        fgi_last20 = fgi_df.tail(20).iloc[::-1].copy()
-        rows = []
-        for d, v in zip(fgi_last20["날짜"], fgi_last20["FGI"]):
-            label = fgi_label(int(v))
-            bg, fg = {
-                "Extreme Greed": ("#4CB43C", "#fff"),
-                "Greed":         ("#AEB335", "#fff"),
-                "Neutral":       ("#FDB737", "#fff"),
-                "Fear":          ("#FF9E9E", "#fff"),
-                "Extreme Fear":  ("#FF8A65", "#fff"),
-            }.get(label, ("#EEE", "#000"))
-            badge = f"<span style='background:{bg};color:{fg};padding:2px 8px;border-radius:999px;font-size:14px;font-weight:600'>{label}</span>"
-            rows.append([
-                f"<td style='padding:6px 8px;text-align:center'>{d}</td>",
-                f"<td style='padding:6px 8px;text-align:center'>{int(v)}</td>",
-                f"<td style='padding:6px 8px;text-align:center'>{badge}</td>"
-            ])
+    rows = []
+    for _, r in qqq.iterrows():
+        if (mdd_latest_zero_date is not None) and (r["Date"] == mdd_latest_zero_date):
+            date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%Y-%m-%d')}</td>"
+        else:
+            date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%Y-%m-%d')}</td>"
 
-        table_html = "<colgroup>" + "".join(["<col style='width:33.3%'>" for _ in range(3)]) + "</colgroup>"
-        render_table("FGI · 최근 20영업일", ["날짜", "FGI", "지표"], rows)
+        price = f"<td style='padding:6px 8px;text-align:right'>{r['Close']:.2f}</td>"
+        dod_html = span_pct(r["DoD_%"])
+        mdd_html = span_mdd(r["MDD_%"])
+        rows.append([date, price,
+                    f"<td style='padding:6px 8px;text-align:right'>{dod_html}</td>",
+                    f"<td style='padding:6px 8px;text-align:right'>{mdd_html}</td>"])
+    render_table("QQQ · 최근 20영업일", ["날짜","가격","전일대비","고점대비"], rows)
 
-    with b2:
-        qqq = fetch_last10_daily("QQQ").iloc[::-1]
+    # VIX 카드 + 테이블
+    vix_val = f"{vix_now:.2f}" if vix_now is not None else "—"
+    html = "<div class='grid'>"
+    html += f"<div class='card'><div class='card-title'>VIX</div><div class='card-value'>{vix_val}</div></div>"
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-        mdd_latest_zero_date = None
-        if not qqq.empty:
-            mdd_zero_rows = qqq[qqq["MDD_%"].abs() < 1e-12]
-            if not mdd_zero_rows.empty:
-                mdd_latest_zero_date = mdd_zero_rows["Date"].max()
-
-        rows = []
-        for _, r in qqq.iterrows():
-            if (mdd_latest_zero_date is not None) and (r["Date"] == mdd_latest_zero_date):
-                date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%Y-%m-%d')}</td>"
-            else:
-                date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%Y-%m-%d')}</td>"
-
-            price = f"<td style='padding:6px 8px;text-align:right'>{r['Close']:.2f}</td>"
-            dod_html = span_pct(r["DoD_%"])
-            mdd_html = span_mdd(r["MDD_%"])
-            rows.append([date, price,
-                        f"<td style='padding:6px 8px;text-align:right'>{dod_html}</td>",
-                        f"<td style='padding:6px 8px;text-align:right'>{mdd_html}</td>"])
-        render_table("QQQ · 최근 20영업일", ["날짜","가격","전일대비","고점대비"], rows)
-
-    with b3:
-        vix = fetch_last10_vix().iloc[::-1]
-        rows = []
-        for _, r in vix.iterrows():
-            date = r["Date"].strftime("%Y-%m-%d")
-            price = f"{r['Close']:.2f}"
-            dod_html = (
-                f"<span style='color:{'green' if r['DoD']>0 else ('red' if r['DoD']<0 else 'inherit')}'>{r['DoD']:+.2f}%</span>"
-                if pd.notna(r["DoD"]) else "<span>—</span>"
-            )
-            wow_html = (
-                f"<span style='color:{'green' if r['WoW']>0 else ('red' if r['WoW']<0 else 'inherit')}'>{r['WoW']:+.2f}%</span>"
-                if pd.notna(r["WoW"]) else "<span>—</span>"
-            )
-            rows.append([
-                f"<td style='padding:6px 8px;text-align:center'>{date}</td>",
-                f"<td style='padding:6px 8px;text-align:right'>{price}</td>",
-                f"<td style='padding:6px 8px;text-align:right'>{dod_html}</td>",
-                f"<td style='padding:6px 8px;text-align:right'>{wow_html}</td>"
-            ])
-        render_table("VIX · 최근 20영업일", ["날짜", "가격", "전일대비", "전주대비"], rows)
+    vix = fetch_last10_vix().iloc[::-1]
+    rows = []
+    for _, r in vix.iterrows():
+        date = r["Date"].strftime("%Y-%m-%d")
+        price = f"{r['Close']:.2f}"
+        dod_html = (
+            f"<span style='color:{'green' if r['DoD']>0 else ('red' if r['DoD']<0 else 'inherit')}'>{r['DoD']:+.2f}%</span>"
+            if pd.notna(r["DoD"]) else "<span>—</span>"
+        )
+        wow_html = (
+            f"<span style='color:{'green' if r['WoW']>0 else ('red' if r['WoW']<0 else 'inherit')}'>{r['WoW']:+.2f}%</span>"
+            if pd.notna(r["WoW"]) else "<span>—</span>"
+        )
+        rows.append([
+            f"<td style='padding:6px 8px;text-align:center'>{date}</td>",
+            f"<td style='padding:6px 8px;text-align:right'>{price}</td>",
+            f"<td style='padding:6px 8px;text-align:right'>{dod_html}</td>",
+            f"<td style='padding:6px 8px;text-align:right'>{wow_html}</td>"
+        ])
+    render_table("VIX · 최근 20영업일", ["날짜", "가격", "전일대비", "전주대비"], rows)
 
     st.caption("FGI: feargreedmeter.com · QQQ/VIX: Yahoo Finance(약 20분 지연)")
 
