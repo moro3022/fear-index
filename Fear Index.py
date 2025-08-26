@@ -86,14 +86,14 @@ def fetch_last10_vix() -> pd.DataFrame:
 
     s = s.dropna()
     date_idx = pd.to_datetime(s.index.date)
-    dod = s.diff()
-    wow = s.diff(5)
+    dod_pct = s.pct_change() * 100  # 상대적 변동률(%)
+    wow_pct = (s / s.shift(5) - 1) * 100  # 상대적 변동률(%)
 
     out = pd.DataFrame({
         "Date": date_idx,
         "Close": s.values,
-        "DoD": dod.values,
-        "WoW": wow.values
+        "DoD": dod_pct.values,  # 이제 %로 표시
+        "WoW": wow_pct.values   # 이제 %로 표시
     }, index=s.index)
     last10 = out.tail(20).reset_index(drop=True)
     return last10[["Date", "Close", "DoD", "WoW"]]
@@ -344,6 +344,7 @@ with tab1:
                         f"<td style='padding:6px 8px;text-align:right'>{wow_html}</td>"
                     ])
                 render_table("VIX", ["날짜", "가격", "전일대비", "전주대비"], rows)
+
 
     st.caption("FGI: feargreedmeter.com · QQQ/VIX: Yahoo Finance(약 20분 지연)")
 
