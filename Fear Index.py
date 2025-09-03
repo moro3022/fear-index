@@ -410,6 +410,7 @@ with tab2:
         ("486450.KS","SOL 미국AI전력인프라"),
         ("442320.KS","RISE 글로벌원자력"),
         ("449450.KS","PLUS K방산"),
+        ("381170.KS","TIGER 미국테크TOP10"),
     ]
     
     cols=None
