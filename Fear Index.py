@@ -42,7 +42,7 @@ def fetch_intraday_price(ticker:str):
     last=float(df["Close"].iloc[-1]); prev=float(df["Close"].iloc[-2]) if len(df)>=2 else None
     return last,(None if prev is None else (last/prev-1)*100)
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=60)  # 60초로 변경하여 더 자주 업데이트
 def fetch_last10_daily(ticker: str) -> pd.DataFrame:
     df = yf.download(tickers=ticker, period="10y", interval="1d", progress=False, threads=False, auto_adjust=False)
     if df is None or df.empty:
@@ -116,11 +116,11 @@ def fetch_ma_daily(ticker: str, w5: int = 5, w20: int = 20):
     return ma5, ma20
 
 @st.cache_data(ttl=3600)
-def fetch_last_daily_generic(ticker: str, n: int = 20) -> pd.DataFrame:
+def fetch_last_daily_generic(ticker: str, n: int = 20) -> tuple[pd.DataFrame, str]:
     import pandas as pd, yfinance as yf
     df = yf.download(tickers=ticker, period="1y", interval="1d", progress=False, threads=False, auto_adjust=False)
     if df is None or df.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(), None
 
     # Close 단일 시리즈 확보
     if isinstance(df.columns, pd.MultiIndex):
@@ -129,6 +129,13 @@ def fetch_last_daily_generic(ticker: str, n: int = 20) -> pd.DataFrame:
         s = df["Close"].astype(float)
 
     s = s.dropna()
+    ath_value = s.max()
+    
+    # ATH 날짜 찾기 (전체 1년 데이터에서 가장 최근)
+    ath_dates = s[s == ath_value]
+    ath_date_str = pd.to_datetime(ath_dates.index[-1]).strftime('%m/%d') if not ath_dates.empty else None
+    
+    # 최근 n일 데이터만 준비
     out = pd.DataFrame(index=s.index)
     out["Date"]  = pd.to_datetime(s.index.date)
     out["Close"] = s.values
@@ -136,7 +143,8 @@ def fetch_last_daily_generic(ticker: str, n: int = 20) -> pd.DataFrame:
     out["ATH"]   = s.cummax()
     out["MDD_%"] = (s / out["ATH"] - 1) * 100
     out = out.tail(n).reset_index(drop=True)
-    return out[["Date", "Close", "DoD_%", "MDD_%"]]
+    
+    return out[["Date", "Close", "DoD_%", "ATH", "MDD_%"]], ath_date_str
 
 @st.cache_data(ttl=900)
 def fetch_last_close(ticker: str):
@@ -206,9 +214,16 @@ st.caption(datetime.datetime.now(KST).strftime("기준: %Y-%m-%d %H:%M:%S KST"))
 fgi_df=fetch_fgi_history()
 fgi_now=int(fgi_df["FGI"].iloc[-1]) if not fgi_df.empty else None
 fgi_label_now=fgi_label(fgi_now) if fgi_now is not None else "—"
-qqq_now,qqq_chg=fetch_intraday_price("QQQ")
-vix_now,vix_chg=fetch_intraday_price("^VIX")
-qqq_now, qqq_chg = fetch_intraday_price("QQQ")
+
+# QQQ 데이터는 fetch_last10_daily로 통일
+qqq_df = fetch_last10_daily("QQQ")
+qqq_now = float(qqq_df["Close"].iloc[-1]) if not qqq_df.empty else None
+qqq_chg = float(qqq_df["DoD_%"].iloc[-1]) if not qqq_df.empty else None
+
+# VIX 데이터는 fetch_last10_vix로 통일
+vix_df = fetch_last10_vix()
+vix_now = float(vix_df["Close"].iloc[-1]) if not vix_df.empty else None
+vix_chg = float(vix_df["DoD"].iloc[-1]) if not vix_df.empty else None
 ma5, ma20 = fetch_ma_daily("QQQ")
 
 tab1, tab2 = st.tabs(["Fear", "Target"])
@@ -289,8 +304,8 @@ with tab1:
                 st.markdown(html, unsafe_allow_html=True)
                 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-                # QQQ 테이블
-                qqq = fetch_last10_daily("QQQ").iloc[::-1]
+                # QQQ 테이블 - 이미 fetch한 데이터 재사용
+                qqq = qqq_df.iloc[::-1]
 
                 mdd_latest_zero_date = None
                 if not qqq.empty:
@@ -353,7 +368,8 @@ with tab2:
         ("379810.KS","KODEX 미국나스닥100"),
         ("487230.KS","KODEX 미국AI전력핵심인프라"),
         ("486450.KS","SOL 미국AI전력인프라"),
-        ("0041D0.KS","KODEX 미국AI소프트웨어TOP10"),
+        ("442320.KS","RISE 글로벌원자력"),
+        ("449450.KS","PLUS K방산"),
         # 필요 시 계속 추가
     ]
     cols=None
@@ -362,31 +378,44 @@ with tab2:
             cols=st.columns(3)
 
         with cols[i%3]:
-            etf_df = fetch_last_daily_generic(etf_ticker, n=20)
+            etf_df, ath_date_str = fetch_last_daily_generic(etf_ticker, n=20)
             mdd_badge = ""
+            ath_info = ""
+            
             if not etf_df.empty:
                 latest_mdd = float(etf_df.iloc[-1]["MDD_%"])
-                if latest_mdd <= -5:  # -5% 이하만 표시
+                
+                # MDD 뱃지 처리
+                if latest_mdd <= -5:
                     mdd_abs = abs(latest_mdd)
-                    # 색상 그라데이션
                     if mdd_abs < 10:
-                        color = "#F6A194"  # 연분홍
+                        color = "#F6A194"
                     elif mdd_abs < 15:
-                        color = "#E65A4C"  # 살몬
+                        color = "#E65A4C"
                     else:
-                        color = "#D73027"  # 진한 붉은색
+                        color = "#D73027"
                     mdd_badge = f"<span style='background:{color};color:#fff;padding:2px 8px;border-radius:6px;font-size:14px;font-weight:600; margin-left:6px'>▼ {mdd_abs:.1f}%</span>"
+                
+                # ATH 정보 처리 (모든 종목에 표시)
+                ath_price = float(etf_df.iloc[-1]["ATH"])
+                if ath_date_str:
+                    ath_info = f"<span class='desktop-inline' style='font-size:14px; color:#666; margin-left:6px;'>ATH: {ath_price:,.0f} ({ath_date_str})</span><div class='mobile-block' style='font-size:14px; color:#666; margin-top:4px;'>ATH: {ath_price:,.0f} ({ath_date_str})</div>"
+                else:
+                    ath_info = f"<span style='font-size:14px; color:#666; margin-left:6px;'>ATH: {ath_price:,.0f}</span>"
 
-            mdd_latest_zero_date = None
+            # 실제 전고점(ATH) 날짜 찾기 (테이블 음영처리용)
+            ath_latest_date = None
             if not etf_df.empty:
-                mdd_zero_rows = etf_df[etf_df["MDD_%"].abs() < 1e-12]
-                if not mdd_zero_rows.empty:
-                    mdd_latest_zero_date = mdd_zero_rows["Date"].max()
+                ath_price = float(etf_df.iloc[-1]["ATH"])
+                ath_date_rows = etf_df[etf_df["Close"] == ath_price]
+                if not ath_date_rows.empty:
+                    ath_latest_date = ath_date_rows["Date"].max()
 
-            etf_now = fetch_last_close(etf_ticker)
+            # 카드 가격도 etf_df에서 가져오도록 수정
+            etf_now = float(etf_df["Close"].iloc[-1]) if not etf_df.empty else None
             html = (
                 f"<div class='card'><div class='card-title'>{etf_name}</div>"
-                f"<div class='card-value'>{(f'{etf_now:,.0f}' if etf_now is not None else '—')}{mdd_badge}</div></div>"
+                f"<div class='card-value'>{(f'{etf_now:,.0f}' if etf_now is not None else '—')}{mdd_badge}{ath_info}</div></div>"
             )
             st.markdown(html, unsafe_allow_html=True)
             st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
@@ -395,7 +424,8 @@ with tab2:
                 etf_df = etf_df.iloc[::-1]
                 rows = []
                 for _, r in etf_df.iterrows():
-                    if (mdd_latest_zero_date is not None) and (r["Date"] == mdd_latest_zero_date):
+                    # 실제 ATH 날짜에 음영처리
+                    if (ath_latest_date is not None) and (r["Date"] == ath_latest_date):
                         date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%Y-%m-%d')}</td>"
                     else:
                         date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%Y-%m-%d')}</td>"
