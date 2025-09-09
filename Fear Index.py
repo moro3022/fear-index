@@ -158,12 +158,12 @@ def fetch_ma_daily(ticker: str, w5: int = 5, w20: int = 20):
         return None, None
 
 @st.cache_data(ttl=3600)
-def fetch_etf_data(ticker: str, n: int = 20) -> tuple[pd.DataFrame, str]:
-    """ETF 데이터 및 ATH 날짜 반환"""
+def fetch_etf_data(ticker: str, n: int = 20) -> tuple[pd.DataFrame, str, float, str]:
+    """ETF 데이터, ATH 날짜, 최근 1달 최저가 및 날짜 반환"""
     try:
         df = yf.download(tickers=ticker, period="1y", interval="1d", progress=False, threads=False, auto_adjust=False)
         if df is None or df.empty:
-            return pd.DataFrame(), None
+            return pd.DataFrame(), None, None, None
 
         # Close 단일 시리즈 확보
         if isinstance(df.columns, pd.MultiIndex):
@@ -176,13 +176,23 @@ def fetch_etf_data(ticker: str, n: int = 20) -> tuple[pd.DataFrame, str]:
 
         s = s.dropna()
         if len(s) == 0:
-            return pd.DataFrame(), None
+            return pd.DataFrame(), None, None, None
             
         ath_value = s.max()
         
         # ATH 날짜 찾기 (전체 1년 데이터에서 가장 최근)
         ath_dates = s[s == ath_value]
         ath_date_str = pd.to_datetime(ath_dates.index[-1]).strftime('%m/%d') if not ath_dates.empty else None
+        
+        # 최근 1달(30일) 최저가 및 날짜 찾기
+        recent_30d = s.tail(30)
+        if len(recent_30d) > 0:
+            low_1m_value = recent_30d.min()
+            low_1m_dates = recent_30d[recent_30d == low_1m_value]
+            low_1m_date_str = pd.to_datetime(low_1m_dates.index[-1]).strftime('%m/%d') if not low_1m_dates.empty else None
+        else:
+            low_1m_value = None
+            low_1m_date_str = None
         
         # 최근 n일 데이터만 준비
         out = pd.DataFrame(index=s.index)
@@ -193,9 +203,9 @@ def fetch_etf_data(ticker: str, n: int = 20) -> tuple[pd.DataFrame, str]:
         out["MDD_%"] = (s / out["ATH"] - 1) * 100
         out = out.tail(n).reset_index(drop=True)
         
-        return out[["Date", "Close", "DoD_%", "ATH", "MDD_%"]], ath_date_str
+        return out[["Date", "Close", "DoD_%", "ATH", "MDD_%"]], ath_date_str, low_1m_value, low_1m_date_str
     except Exception as e:
-        return pd.DataFrame(), None
+        return pd.DataFrame(), None, None, None
 
 def pct_str(x):
     return "—" if x is None or pd.isna(x) else f"{x:+.2f}%"
@@ -420,10 +430,12 @@ with tab2:
 
         with cols[i%3]:
             try:
-                etf_df, ath_date_str = fetch_etf_data(etf_ticker, n=20)
+                etf_df, ath_date_str, low_1m_value, low_1m_date_str = fetch_etf_data(etf_ticker, n=20)
             except Exception as e:
                 etf_df = pd.DataFrame()
                 ath_date_str = None
+                low_1m_value = None
+                low_1m_date_str = None
                 
             # MDD에 따른 카드 배경색 결정
             card_bg = "#eee"  # 기본 배경색
@@ -443,10 +455,14 @@ with tab2:
             if not etf_df.empty:
                 # ATH 정보 처리
                 ath_price = float(etf_df.iloc[-1]["ATH"])
-                if ath_date_str:
-                    ath_info = f"<span class='desktop-inline' style='font-size:14px; color:#666; margin-left:6px;'>ATH: {ath_price:,.0f} ({ath_date_str})</span><div class='mobile-block' style='font-size:14px; color:#666; margin-top:4px;'>ATH: {ath_price:,.0f} ({ath_date_str})</div>"
-                else:
-                    ath_info = f"<span style='font-size:14px; color:#666; margin-left:6px;'>ATH: {ath_price:,.0f}</span>"
+                ath_str = f"ATH: {ath_price:,.0f}" + (f" ({ath_date_str})" if ath_date_str else "")
+                
+                # 최근 1달 최저가 정보 처리
+                low_1m_str = ""
+                if low_1m_value is not None:
+                    low_1m_str = f" / 1M Low: {low_1m_value:,.0f}" + (f" ({low_1m_date_str})" if low_1m_date_str else "")
+                
+                ath_info = f"<span class='desktop-inline' style='font-size:14px; color:#666; margin-left:6px;'>{ath_str}{low_1m_str}</span><div class='mobile-block' style='font-size:14px; color:#666; margin-top:4px;'><div>{ath_str}</div><div>{low_1m_str.replace(' / ', '')}</div></div>"
 
             # 실제 전고점(ATH) 날짜 찾기 (테이블 음영처리용)
             ath_latest_date = None
