@@ -1,4 +1,5 @@
 import re, datetime, zoneinfo, requests, pandas as pd, yfinance as yf, streamlit as st
+import FinanceDataReader as fdr
 
 KST=zoneinfo.ZoneInfo("Asia/Seoul")
 ROOT="https://feargreedmeter.com"; PATH="/fear-and-greed-index"
@@ -161,20 +162,11 @@ def fetch_ma_daily(ticker: str, w5: int = 5, w20: int = 20):
 def fetch_etf_data(ticker: str, n: int = 20) -> tuple[pd.DataFrame, str, float, str]:
     """ETF 데이터, ATH 날짜, 최근 1달 최저가 및 날짜 반환"""
     try:
-        df = yf.download(tickers=ticker, period="1y", interval="1d", progress=False, threads=False, auto_adjust=False)
+        df = fdr.DataReader(ticker, start='2023-01-01')  # 1년 이상 데이터
         if df is None or df.empty:
             return pd.DataFrame(), None, None, None
 
-        # Close 단일 시리즈 확보
-        if isinstance(df.columns, pd.MultiIndex):
-            if ("Close", ticker) in df.columns:
-                s = df[("Close", ticker)].astype(float)
-            else:
-                s = df.xs("Close", axis=1, level=0).iloc[:, 0].astype(float)
-        else:
-            s = df["Close"].astype(float)
-
-        s = s.dropna()
+        s = df['Close'].astype(float).dropna()
         if len(s) == 0:
             return pd.DataFrame(), None, None, None
             
@@ -415,12 +407,12 @@ with tab1:
 
 with tab2:
     etfs=[
-        ("379810.KS","KODEX 미국나스닥100"),
-        ("487230.KS","KODEX 미국AI전력핵심인프라"),
-        ("486450.KS","SOL 미국AI전력인프라"),
-        ("442320.KS","RISE 글로벌원자력"),
-        ("449450.KS","PLUS K방산"),
-        ("381170.KS","TIGER 미국테크TOP10"),
+        ("379810","KODEX 미국나스닥100"),
+        ("487230","KODEX 미국AI전력핵심인프라"),
+        ("486450","SOL 미국AI전력인프라"),
+        ("442320","RISE 글로벌원자력"),
+        ("449450","PLUS K방산"),
+        ("381170","TIGER 미국테크TOP10"),
     ]
     
     cols=None
@@ -499,4 +491,4 @@ with tab2:
                     rows.append([date, price, dod, mdd])
                 render_table(f"{etf_ticker}", ["날짜","가격","전일대비","고점대비"], rows)
     
-    st.caption("Yahoo Finance(일봉 종가)")
+    st.caption("FinanceDataReader(일봉 종가)")
