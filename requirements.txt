@@ -2,4 +2,5 @@ streamlit
 pandas
 yfinance
 requests
-FinanceDataReader
+git+https://github.com/FinanceData/FinanceDataReader.git
+
