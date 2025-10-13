@@ -598,8 +598,8 @@ with tab3:
             
             rows.append([
                 f"<td style='padding:6px 8px;text-align:center'><b>{ticker}</b></td>",
-                f"<td style='padding:6px 8px;text-align:right'>${row['current_price']:.2f}</td>",
-                f"<td style='padding:6px 8px;text-align:right'>${row['ath_90d']:.2f}</td>",
+                f"<td style='padding:6px 8px;text-align:right'>{row['current_price']:.2f}</td>",
+                f"<td style='padding:6px 8px;text-align:right'>{row['ath_90d']:.2f}</td>",
                 f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:600'>{dd:.2f}%</td>",
                 f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.1f}</td>",
                 f"<td style='padding:6px 8px;text-align:center'>{dca1}</td>",
