@@ -1,5 +1,7 @@
 import re, datetime, zoneinfo, requests, pandas as pd, yfinance as yf, streamlit as st
 import FinanceDataReader as fdr
+import numpy as np
+from datetime import timedelta
 
 KST=zoneinfo.ZoneInfo("Asia/Seoul")
 ROOT="https://feargreedmeter.com"; PATH="/fear-and-greed-index"
@@ -223,10 +225,10 @@ def span_mdd(val):
     return f"<span style='color:red'>{val:.2f}%</span>" if val<0 else f"<span>{val:.2f}%</span>"
 
 def render_table(title, columns, rows):
-    html = f"<div><div class='card-title'>{title}</div><table style='width:100%;border-collapse:collapse;font-size:16px;border:1px solid #e5e7eb'><thead><tr>"
+    html = f"<div><div class='card-title'>{title}</div><table style='width:100%;border-collapse:collapse;font-size:16px;border:1px solid #e5e7eb;table-layout:fixed'><thead><tr>"
     # 헤더는 무조건 가운데 정렬
     for col in columns:
-        html += f"<th style='border-bottom:1px solid #e5e7eb;text-align:center;padding:6px 8px'>{col}</th>"
+        html += f"<th style='border-bottom:1px solid #e5e7eb;text-align:center;padding:6px 8px;width:{100/len(columns)}%'>{col}</th>"
     html += "</tr></thead><tbody>"
     for r in rows:
         html += "<tr>" + "".join(r) + "</tr>"
@@ -267,7 +269,7 @@ vix_df = fetch_last20_vix()
 # QQQ 이동평균
 ma5, ma20 = fetch_ma_daily("QQQM")
 
-tab1, tab2 = st.tabs(["Fear", "Target"])
+tab1, tab2, tab3 = st.tabs(["Fear", "Target", "AI전력"])
 
 with tab1:
     # 3개 지표 카드
@@ -492,3 +494,120 @@ with tab2:
                 render_table(f"{etf_ticker}", ["날짜","가격","전일대비","고점대비"], rows)
     
     st.caption("FinanceDataReader(일봉 종가)")
+
+with tab3:
+    st.markdown("<div style='font-weight:600;font-size:20px;margin-bottom:12px'>미국 주식 매매 트래킹</div>", unsafe_allow_html=True)
+    
+    # RSI 계산 함수
+    def calculate_rsi(data, period=14):
+        delta = data.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+    
+    # 주식 데이터 가져오기
+    @st.cache_data(ttl=300)
+    def get_stock_data(ticker):
+        try:
+            stock = yf.Ticker(ticker)
+            end_date = datetime.datetime.now()
+            start_date = end_date - datetime.timedelta(days=120)
+            
+            hist = stock.history(start=start_date, end=end_date)
+            
+            if hist.empty:
+                return None
+            
+            current_price = hist['Close'].iloc[-1]
+            
+            ninety_days_ago = pd.Timestamp(end_date - datetime.timedelta(days=90)).tz_localize('America/New_York')
+            recent_data = hist[hist.index >= ninety_days_ago]
+            ath_90d = recent_data['High'].max()
+            
+            drawdown = ((current_price - ath_90d) / ath_90d) * 100
+            rsi = calculate_rsi(hist['Close'], 14).iloc[-1]
+            
+            return {
+                'ticker': ticker,
+                'current_price': current_price,
+                'ath_90d': ath_90d,
+                'drawdown': drawdown,
+                'rsi': rsi
+            }
+        except Exception as e:
+            return None
+    
+    # 물타기 기준 설정
+    dca_rules = {
+        'GEV': ('-10%', '-15%'),
+        'CEG': ('-8%', '-12%'),
+        'ANET': ('-12%', '-18%'),
+        'ETN': ('-8%', '-12%'),
+        'OKLO': ('-15%', '-25%'),
+        'TT': ('-10%', '-15%'),
+        'VST': ('-8%', '-12%'),
+        'VRT': ('-10%', '-15%'),
+        'PWR': ('-8%', '-12%'),
+        'SMR': ('-20%', '-30%'),
+        'CCJ': ('-10%', '-15%')
+    }
+    
+    # 티커 목록
+    tickers = ['GEV', 'CEG', 'ANET', 'ETN', 'OKLO', 'TT', 'VST', 'VRT', 'PWR', 'SMR', 'CCJ']
+    
+    # 데이터 수집
+    stock_data = []
+    for ticker in tickers:
+        data = get_stock_data(ticker)
+        if data:
+            stock_data.append(data)
+    
+    if stock_data:
+        df = pd.DataFrame(stock_data)
+        
+        # render_table 함수 사용
+        rows = []
+        for _, row in df.iterrows():
+            ticker = row['ticker']
+            dd = row['drawdown']
+            
+            # 하락률 폰트 색상 결정
+            dd_color = "inherit"
+            if dd <= -5:
+                mdd_abs = abs(dd)
+                if mdd_abs < 10:
+                    dd_color = "#F8B6AB"
+                elif mdd_abs < 15:
+                    dd_color = "#E76E62"
+                else:
+                    dd_color = "#DE5143"
+            
+            # RSI 색상
+            rsi = row['rsi']
+            if rsi >= 70:
+                rsi_color = '#FF6B6B'
+            elif rsi <= 30:
+                rsi_color = '#90EE90'
+            else:
+                rsi_color = 'white'
+            
+            # 물타기 기준
+            dca1, dca2 = dca_rules.get(ticker, ('-', '-'))
+            
+            rows.append([
+                f"<td style='padding:6px 8px;text-align:center'><b>{ticker}</b></td>",
+                f"<td style='padding:6px 8px;text-align:right'>${row['current_price']:.2f}</td>",
+                f"<td style='padding:6px 8px;text-align:right'>${row['ath_90d']:.2f}</td>",
+                f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:600'>{dd:.2f}%</td>",
+                f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.1f}</td>",
+                f"<td style='padding:6px 8px;text-align:center'>{dca1}</td>",
+                f"<td style='padding:6px 8px;text-align:center'>{dca2}</td>"
+            ])
+        
+        render_table("US Stocks", ["티커", "현재가", "90일 ATH", "하락률(%)", "RSI(14)", "물타기 1단계", "물타기 2단계"], rows)
+    else:
+        st.error("데이터를 불러올 수 없습니다.")
+    
+    st.caption("Yahoo Finance · 업데이트: 5분마다 캐시")
