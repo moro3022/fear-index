@@ -619,7 +619,7 @@ with tab3:
                 f"<td style='padding:6px 8px;text-align:center'><b>{ticker}</b></td>",
                 f"<td style='padding:6px 8px;text-align:right'>{row['current_price']:.0f}</td>",
                 f"<td style='padding:6px 8px;text-align:right'>{row['ath_90d']:.0f}</td>",
-                f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:500'>{dd:.1f}%</td>",
+                f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:500'>{dd:.1f}</td>",
                 f"<td style='padding:6px 8px;text-align:center'>{dca1_display}</td>",
                 # f"<td style='padding:6px 8px;text-align:center'>{dca2_display}</td>",
                 f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.0f}</td>",
