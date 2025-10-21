@@ -251,7 +251,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 st.markdown("<div style='font-weight:600;font-size:24px'>하락장 공포 지표 대시보드</div>",unsafe_allow_html=True)
-st.caption(datetime.datetime.now(KST).strftime("기준: %Y-%m-%d %H:%M:%S KST"))
+st.caption(datetime.datetime.now(KST).strftime("기준: %y-%m-%d %H:%M:%S KST"))
 
 # 데이터 가져오기
 fgi_df = fetch_fgi_history()
@@ -360,9 +360,9 @@ with tab1:
                     rows = []
                     for _, r in qqq_reversed.iterrows():
                         if (mdd_latest_zero_date is not None) and (r["Date"] == mdd_latest_zero_date):
-                            date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%Y-%m-%d')}</td>"
+                            date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%y-%m-%d')}</td>"
                         else:
-                            date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%Y-%m-%d')}</td>"
+                            date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%y-%m-%d')}</td>"
 
                         price = f"<td style='padding:6px 8px;text-align:right'>{r['Close']:.2f}</td>"
                         dod_html = span_pct(r["DoD_%"])
@@ -387,7 +387,7 @@ with tab1:
                     vix_reversed = vix_df.iloc[::-1]
                     rows = []
                     for _, r in vix_reversed.iterrows():
-                        date = r["Date"].strftime("%Y-%m-%d")
+                        date = r["Date"].strftime("%y-%m-%d")
                         price = f"{r['Close']:.2f}"
                         dod_html = (
                             f"<span style='color:{'green' if r['DoD']>0 else ('red' if r['DoD']<0 else 'inherit')}'>{r['DoD']:+.2f}%</span>"
@@ -485,9 +485,9 @@ with tab2:
                 for _, r in etf_reversed.iterrows():
                     # 실제 ATH 날짜에 음영처리
                     if (ath_latest_date is not None) and (r["Date"] == ath_latest_date):
-                        date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%Y-%m-%d')}</td>"
+                        date = f"<td style='padding:6px 8px;text-align:center;background:#FFF3C4;border-radius:4px'>{r['Date'].strftime('%y-%m-%d')}</td>"
                     else:
-                        date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%Y-%m-%d')}</td>"
+                        date = f"<td style='padding:6px 8px;text-align:center'>{r['Date'].strftime('%y-%m-%d')}</td>"
 
                     price = f"<td style='padding:6px 8px;text-align:right'>{r['Close']:,.0f}</td>"
                     dod = f"<td style='padding:6px 8px;text-align:right'>{span_pct(r['DoD_%'])}</td>"
@@ -589,15 +589,26 @@ with tab3:
             
             # RSI 색상
             rsi = row['rsi']
-            if rsi >= 70:
-                rsi_color = '#FF6B6B'
-            elif rsi <= 30:
-                rsi_color = '#90EE90'
-            else:
-                rsi_color = 'white'
+            rsi_color = 'white'
             
             # 물타기 기준
             dca1, dca2 = dca_rules.get(ticker, ('-', '-'))
+            
+            # 물타기 1단계 충족 확인
+            dca1_display = dca1
+            if dca1 != '-':
+                dca1_threshold = float(dca1.strip('%'))
+                if dd <= dca1_threshold:
+                    badge = "<span style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
+                    dca1_display = f"{dca1}{badge}"
+            
+            # 물타기 2단계 충족 확인
+            dca2_display = dca2
+            if dca2 != '-':
+                dca2_threshold = float(dca2.strip('%'))
+                if dd <= dca2_threshold:
+                    badge = "<span style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
+                    dca2_display = f"{dca2}{badge}"
             
             rows.append([
                 f"<td style='padding:6px 8px;text-align:center'><b>{ticker}</b></td>",
@@ -605,11 +616,11 @@ with tab3:
                 f"<td style='padding:6px 8px;text-align:right'>{row['ath_90d']:.0f}</td>",
                 f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:600'>{dd:.1f}%</td>",
                 f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.0f}</td>",
-                f"<td style='padding:6px 8px;text-align:center'>{dca1}</td>",
-                f"<td style='padding:6px 8px;text-align:center'>{dca2}</td>"
+                f"<td style='padding:6px 8px;text-align:center'>{dca1_display}</td>",
+                f"<td style='padding:6px 8px;text-align:center'>{dca2_display}</td>"
             ])
         
-        render_table("US Stocks", ["티커", "현재가", "90일 ATH", "하락률(%)", "RSI(14)", "물타기 1단계", "물타기 2단계"], rows)
+        render_table("US Stocks", ["티커", "NOW", "ATH", "DD", "RSI", "STEP1", "STEP2"], rows)
     else:
         st.error("데이터를 불러올 수 없습니다.")
     
