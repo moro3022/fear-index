@@ -244,15 +244,9 @@ st.markdown(
     ".card-value{font-weight:700;font-size:32px}"
     ".desktop-inline{display:inline}"
     ".mobile-block{display:none}"
-    ".badge-inline{display:inline}"
-    ".badge-block{display:none}"
     "@media (max-width: 767px) {"
     ".desktop-inline{display:none}"
     ".mobile-block{display:block}"
-    ".badge-inline{display:none}"
-    ".badge-block{display:block;margin-top:2px}"
-    "table{font-size:11px}"
-    "table th, table td{padding:4px 2px!important}"
     "}</style>",
     unsafe_allow_html=True
 )
@@ -593,30 +587,28 @@ with tab3:
                 else:
                     dd_color = "#DE5143"
             
-            # RSI 색상 제거 (흰색으로 고정)
+            # RSI 색상
             rsi = row['rsi']
             rsi_color = 'white'
             
-            # 물타기 기준 및 충족 여부 확인
+            # 물타기 기준
             dca1, dca2 = dca_rules.get(ticker, ('-', '-'))
             
-            # 물타기 1단계 충족 확인 (데스크톱/모바일 분리)
+            # 물타기 1단계 충족 확인
             dca1_display = dca1
             if dca1 != '-':
                 dca1_threshold = float(dca1.strip('%'))
                 if dd <= dca1_threshold:
-                    badge_inline = "<span class='badge-inline' style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
-                    badge_block = "<span class='badge-block' style='background:#DE5143;color:#fff;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:600'>충족</span>"
-                    dca1_display = f"{dca1}{badge_inline}{badge_block}"
+                    badge = "<span style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
+                    dca1_display = f"{dca1}{badge}"
             
-            # 물타기 2단계 충족 확인 (데스크톱/모바일 분리)
+            # 물타기 2단계 충족 확인
             dca2_display = dca2
             if dca2 != '-':
                 dca2_threshold = float(dca2.strip('%'))
                 if dd <= dca2_threshold:
-                    badge_inline = "<span class='badge-inline' style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
-                    badge_block = "<span class='badge-block' style='background:#DE5143;color:#fff;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:600'>충족</span>"
-                    dca2_display = f"{dca2}{badge_inline}{badge_block}"
+                    badge = "<span style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
+                    dca2_display = f"{dca2}{badge}"
             
             rows.append([
                 f"<td style='padding:6px 8px;text-align:center'><b>{ticker}</b></td>",
@@ -625,9 +617,11 @@ with tab3:
                 f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:600'>{dd:.1f}%</td>",
                 f"<td style='padding:6px 8px;text-align:center'>{dca1_display}</td>",
                 # f"<td style='padding:6px 8px;text-align:center'>{dca2_display}</td>",
-                f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.0f}</td>"
+                f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.0f}</td>",
             ])
-
-        st.markdown("<div style='overflow-x:auto;'>", unsafe_allow_html=True)
+        
         render_table("US Stocks", ["티커", "NOW", "ATH", "DD", "STEP1", "RSI"], rows)
-        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.error("데이터를 불러올 수 없습니다.")
+    
+    st.caption("Yahoo Finance · 업데이트: 5분마다 캐시")
