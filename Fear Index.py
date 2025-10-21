@@ -244,6 +244,8 @@ st.markdown(
     ".card-value{font-weight:700;font-size:32px}"
     ".desktop-inline{display:inline}"
     ".mobile-block{display:none}"
+    ".badge-inline{display:inline}"
+    ".badge-block{display:none}"
     "@media (max-width: 767px) {"
     ".desktop-inline{display:none}"
     ".mobile-block{display:block}"
@@ -599,8 +601,9 @@ with tab3:
             if dca1 != '-':
                 dca1_threshold = float(dca1.strip('%'))
                 if dd <= dca1_threshold:
-                    badge = "<span style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
-                    dca1_display = f"{dca1}{badge}"
+                    badge_inline = "<span class='badge-inline' style='background:#DE5143;color:#fff;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;margin-left:4px'>충족</span>"
+                    badge_block = "<span class='badge-block' style='background:#DE5143;color:#fff;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:600'>충족</span>"
+                    dca1_display = f"{dca1}{badge_inline}{badge_block}"
             
             # 물타기 2단계 충족 확인
             dca2_display = dca2
