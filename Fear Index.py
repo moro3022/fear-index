@@ -599,7 +599,7 @@ with tab3:
             
             # 물타기 기준
             dca1, dca2 = dca_rules.get(ticker, ('-', '-'))
-            
+
             # 물타기 1단계 충족 확인
             dca1_display = dca1
             if dca1 != '-':
@@ -610,12 +610,12 @@ with tab3:
                     dca1_display = f"{dca1}{badge_inline}{badge_block}"
 
             rows.append([
-                f"<td style='padding:6px 8px;text-align:center'><b>{ticker}</b></td>",
-                f"<td style='padding:6px 8px;text-align:right'>{row['current_price']:.0f}</td>",
-                f"<td style='padding:6px 8px;text-align:right'>{row['ath_90d']:.0f}</td>",
-                f"<td style='padding:6px 8px;text-align:right;color:{dd_color};font-weight:600'>{dd:.1f}%</td>",
-                f"<td style='padding:6px 8px;text-align:center'>{dca1_display}</td>",
-                f"<td style='padding:6px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.0f}</td>",
+                f"<td style='padding:10px 8px;text-align:center'><b>{ticker}</b></td>",
+                f"<td style='padding:10px 8px;text-align:right'>{row['current_price']:.0f}</td>",
+                f"<td style='padding:10px 8px;text-align:right'>{row['ath_90d']:.0f}</td>",
+                f"<td style='padding:10px 8px;text-align:right;color:{dd_color};font-weight:600'>{dd:.1f}%</td>",
+                f"<td style='padding:10px 8px;text-align:center'>{dca1_display}</td>",
+                f"<td style='padding:10px 8px;text-align:right;background-color:{rsi_color}'>{rsi:.0f}</td>",
             ])
 
         st.markdown("<div style='overflow-x:auto;'>", unsafe_allow_html=True)
