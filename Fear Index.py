@@ -249,6 +249,8 @@ st.markdown(
     "@media (max-width: 767px) {"
     ".desktop-inline{display:none}"
     ".mobile-block{display:block}"
+    ".badge-inline{display:none}"
+    ".badge-block{display:block;margin-top:2px}"
     "}</style>",
     unsafe_allow_html=True
 )
